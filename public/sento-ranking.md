@@ -6,8 +6,8 @@ tags:
   - GooglePlacesAPI
   - ClaudeCode
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-03-22T22:00:31+09:00'
+id: 81b2e3d32780ff1aa240
 organization_url_name: null
 slide: false
 ignorePublish: false
