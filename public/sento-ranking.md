@@ -10,7 +10,7 @@ updated_at: '2026-03-22T22:00:31+09:00'
 id: null
 organization_url_name: null
 slide: false
-ignorePublish: true
+ignorePublish: false
 ---
 
 ## はじめに
@@ -19,7 +19,7 @@ ignorePublish: true
 
 Google Mapsのタイムラインには長年のロケーション履歴が残っているので、ここからうまく抽出すれば過去の訪問履歴を銭湯・サウナだけに絞ってランキング化できるはずです。やってみたところ思った以上にハマりどころがあったので、同じことをやりたい方の参考になればと思い記事にしました。
 
-今回はClaude Codeに手伝ってもらいながら進めています。スクリプトの実装やデータの整理はほぼClaude Code任せで、自分がやったのは「データを手元に持ってくる」部分が中心です。
+スクリプトの実装はAI（Claude Code）に任せたので、この記事ではデータの取得方法やハマりどころを中心に書いています。
 
 ## 全体の流れ
 
@@ -36,17 +36,23 @@ Google Mapsのタイムラインには長年のロケーション履歴が残っ
 
 最初にGoogle Takeout（takeout.google.com）を試しました。「ロケーション履歴（タイムライン）」にチェックを入れてエクスポートしたのですが、出てきたZIPの中身は`Settings.json`と`Encrypted Backups.txt`だけ。訪問データが1件も入っていませんでした。
 
-これは2024年にGoogleがタイムラインの保存先をクラウドからデバイス上（スマホ本体）に移行した影響です。そういえばそんな話あったなと。移行済みのアカウントでは、Takeoutから訪問履歴が取れなくなっています。
+これは[2023年12月にGoogleが発表](https://blog.google/products-and-platforms/products/maps/updates-to-location-history-and-new-controls-coming-soon-to-maps/)した、タイムラインの保存先をクラウドからデバイス上（スマホ本体）に移行する変更の影響です。そういえばそんな話あったなと。2024年中に段階的に移行が進み、移行済みのアカウントではTakeoutから訪問履歴が取れなくなっています（[サポートページ](https://support.google.com/maps/answer/14169818)）。
 
-### Androidの設定アプリからエクスポートする
+### デバイスからエクスポートする
 
-調べ直したところ、[Googleコミュニティのスレッド](https://support.google.com/maps/thread/365988599/google%E3%83%9E%E3%83%83%E3%83%97%E3%81%AE%E3%82%BF%E3%82%A4%E3%83%A0%E3%83%A9%E3%82%A4%E3%83%B3%E3%82%92%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88%E3%81%99%E3%82%8B%E6%96%B9%E6%B3%95?hl=ja)が参考になりました。正解はGoogle Mapsアプリではなく、Androidの設定アプリから辿る方法です。
+調べ直したところ、[Google Maps公式ヘルプ](https://support.google.com/maps/answer/6258979)にエクスポート手順が載っていました。
 
-1. Androidの**設定アプリ**（⚙）を開く
+**Androidの場合**
+
+1. **設定アプリ**（⚙）を開く
 2. **「位置情報」** → **「位置情報サービス」** → **「タイムライン」**
 3. **「タイムラインをエクスポート」**をタップ
 
-エクスポート先としてGoogle Driveを選択するとJSONファイルが保存されます。自分の場合、13年分で約60MBでした。
+**iPhoneの場合**
+
+[Google Maps公式ヘルプ（iPhone向け）](https://support.google.com/maps/answer/6258979?co=GENIE.Platform%3DiOS)を参照してください。
+
+エクスポート先としてGoogle Driveを選択するとJSONファイルが保存されます。自分の場合（Android）、13年分で約60MBでした。
 
 ## エクスポートしたデータの構造
 
@@ -83,9 +89,9 @@ JSONを開いてみると、こんな構造になっています。
 
 ### コスト
 
-<!-- TODO: 実際のコストを確認して追記する -->
+Places API (New) では、リクエスト時に取得するフィールドによって料金が変わります。今回は `displayName`、`types`、`formattedAddress` だけ取得するので、最も安い料金帯が適用されます（[$5.00 / 1,000リクエスト](https://developers.google.com/maps/documentation/places/web-service/usage-and-billing)）。
 
-Places API (New) の Place Details で `displayName` を取得する場合、1リクエストあたり約$0.003（Basic SKU）です。自分のデータでは約3,000件のユニークな場所があったので、$10前後の見込みです。詳細は確認でき次第追記します。
+Google Maps Platform には**月額 $200 の無料クレジット**があるので、**月 40,000リクエストまでは無料**です。自分のデータでは約3,000件のユニークな場所があったので、無料枠に余裕で収まりました。
 
 ### placeId から施設名を取得する
 
@@ -104,7 +110,7 @@ with urllib.request.urlopen(req, timeout=10) as resp:
     types = data.get("types", [])
 ```
 
-`X-Goog-FieldMask` で取得するフィールドを絞ることで、コストを Basic SKU（$0.003/リクエスト）に抑えられます。
+Places API (New) では、取得するフィールドが Basic（名前・住所など）/ Contact（電話番号など）/ Atmosphere（レビュー・営業時間など）のカテゴリに分かれていて、カテゴリが上がるほど料金も上がります。`X-Goog-FieldMask` で Basic カテゴリのフィールドだけを指定することで、最も安い料金帯に収められます。
 
 ### キーワードとカテゴリでフィルタする
 
@@ -137,7 +143,7 @@ https://github.com/milkmaccya2/google-maps-timeline-sento
 
 ## ノイズの除去と公式サイトの調査
 
-キーワードマッチだけだとノイズが混じります。「spa」に引っかかるスパゲッティ屋やアパレルショップ、「湯」が名前に入るジムなど。これもClaude Codeに全施設リストを見せて除外してもらいました。JAXAの宇宙センターが混じっていたのは笑いました。
+キーワードマッチだけだとノイズが混じります。「spa」に引っかかるスパゲッティ屋やアパレルショップ、「湯」が名前に入るジムなど。これもClaude Codeに全施設リストを見せて除外してもらいました。
 
 各施設の公式サイトのURLもClaude Codeにsub agentsで4並列検索してもらい、70施設以上の公式サイトURL付きCSVが出力されました。
 
@@ -160,52 +166,29 @@ https://github.com/milkmaccya2/google-maps-timeline-sento
    5. █████████████████               17回
 ```
 
-地元のスーパー銭湯が圧倒的1位で、次いで都内の銭湯が並びます。旅行先の温泉もちゃんと拾えていました。
+施設名は伏せていますが、地元のスーパー銭湯が圧倒的1位で、次いで都内の銭湯が並びます。旅行先の温泉もちゃんと拾えていました。
 
-公式サイトのURLと一緒にリストを眺めていると、忘れていた施設が出てきて「あーここ行ったな」となります。旅行先でたまたま寄った温泉とか、閉業してしまった施設とか。なかなかよかったです。
+公式サイトのURLと一緒にリストを眺めていると、忘れていた施設が出てきて「あーここ行ったな」となります。旅行先でたまたま寄った温泉とか、閉業してしまった施設とか。晩酌のつまみになりますね。
 
 ## Google Takeoutで他にできそうなこと
 
-今回はロケーション履歴を使いましたが、Google Takeoutには他にも面白いデータがあります。
-
-### YouTube / YouTube Musicの視聴履歴
-
-視聴履歴をJSONでエクスポートして、自分だけの「YouTube Wrapped」を作れます。最も見たチャンネルのランキング、時間帯別の視聴傾向など。[ytmusicstats](https://ytmusicstats.vercel.app/) のような既存ツールもあります。
-
-### Google検索履歴（My Activity）
-
-過去数年分の検索クエリをワードクラウド化したり、月別の関心トピックをクラスタリングしたりできます。検索履歴は「その時の自分が本当に知りたかったこと」の記録なので、日記より正直な自分史になります。
-
-### Chrome閲覧履歴
-
-ドメイン別の滞在傾向や、時間帯別のブラウジングパターンを分析できます。[chrome-takeout-analyzer](https://github.com/OurCodeBase/chrome-takeout-analyzer) でインタラクティブなレポートも作れます。
-
-### Google Fitデータ
-
-歩数・消費カロリー・睡眠データなどのCSVを時系列で可視化できます。今回のロケーション履歴と組み合わせれば「この日はどこを歩き回って何歩だったか」まで紐づけられます。
-
-### Gmail
-
-mbox形式でエクスポートして、送受信頻度の時系列分析やセンチメント分析ができます。
-
----
-
-どのデータもJSON/CSVで提供されるので、スクリプトとの相性がいいです。複数のデータを組み合わせるともっと面白くなりそうです。
+今回はロケーション履歴を使いましたが、Google Takeoutでは他にもYouTubeの視聴履歴、Google検索履歴、Chrome閲覧履歴、Google Fitの歩数データ、Gmailなど、さまざまなデータをエクスポートできます。どれもJSON/CSVで提供されるので、同じようにスクリプトで分析できます。
 
 ## まとめ
 
-今回やってみて分かったポイントです：
+今回やってみて分かったポイントです。
 
 - **Google Takeoutではタイムラインデータが取れません**（2024年以降のデバイス移行済みアカウント）
-- **Androidの設定アプリからエクスポート**するのが正解です
+- **デバイスからエクスポート**するのが正解です（Androidは設定アプリ、iPhoneはGoogle Mapsアプリから）
 - エクスポートデータには**施設名がない**ので、Places APIでの名前解決が必要です
-- 実装はClaude Codeに丸投げで問題ありませんでした。自分がやったのはデータのエクスポートとAPIキーの用意ぐらいです
+- Places APIの無料枠（月40,000リクエスト）で十分まかなえます
 
 カフェやラーメン屋の訪問回数なんかもキーワードを変えれば同じように出せるので、気になる方はぜひ試してみてください。
 
 ## 参考
 
 - [スクリプト（GitHub）](https://github.com/milkmaccya2/google-maps-timeline-sento)
-- [Googleマップのタイムラインをエクスポートする方法 - Google コミュニティ](https://support.google.com/maps/thread/365988599/google%E3%83%9E%E3%83%83%E3%83%97%E3%81%AE%E3%82%BF%E3%82%A4%E3%83%A0%E3%83%A9%E3%82%A4%E3%83%B3%E3%82%92%E3%82%A8%E3%82%AF%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%88%E3%81%99%E3%82%8B%E6%96%B9%E6%B3%95?hl=ja)
-- [Places API (New) - Google Developers](https://developers.google.com/maps/documentation/places/web-service)
-- [Google Takeout](https://takeout.google.com/)
+- [Updates to Location History and new notification controls - Google Blog](https://blog.google/products-and-platforms/products/maps/updates-to-location-history-and-new-controls-coming-soon-to-maps/)
+- [タイムラインについて - Google Maps ヘルプ](https://support.google.com/maps/answer/14169818)
+- [Google マップ タイムラインを管理する - Google Maps ヘルプ](https://support.google.com/maps/answer/6258979)
+- [Places API 料金 - Google Developers](https://developers.google.com/maps/documentation/places/web-service/usage-and-billing)
