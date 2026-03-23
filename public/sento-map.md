@@ -2,13 +2,13 @@
 title: 銭湯の訪問記録をLeafletで地図に可視化するWebアプリを作った
 tags:
   - JavaScript
-  - Leaflet
-  - GitHubPages
-  - ClaudeCode
+  - leaflet
+  - GithubPages
   - 銭湯
+  - ClaudeCode
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-03-24T06:54:18+09:00'
+id: 979247894faf89e08f76
 organization_url_name: null
 slide: false
 ignorePublish: false
