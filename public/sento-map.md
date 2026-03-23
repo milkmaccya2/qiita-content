@@ -11,7 +11,7 @@ updated_at: ''
 id: null
 organization_url_name: null
 slide: false
-ignorePublish: true
+ignorePublish: false
 ---
 
 ## はじめに
@@ -23,7 +23,7 @@ https://qiita.com/milkmaccya2/items/1e1ef669b9b5c5d78367
 地図にプロットしたら、行動圏の変化や旅先での銭湯訪問が可視化できて面白いのでは？と思い、Leafletを使った静的Webアプリを作ってみました。
 
 ![全体像：マーカー表示とサイドバー](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/2fd8baec-dddf-4d92-a509-f6c0e362f494.png)
-*完成した銭湯マップ。訪問回数に応じてマーカーの大きさが変わる*
+*完成した銭湯マップ。訪問回数に応じてマーカーの大きさが変わる（[デモサイト](https://milkmaccya2.github.io/sento-map-viewer/)）*
 
 ## 使った技術
 
@@ -51,7 +51,7 @@ https://qiita.com/milkmaccya2/items/1e1ef669b9b5c5d78367
 訪問CSVには緯度経度があり、ランキングCSVには公式サイトURLがあるので、施設名をキーにして結合します。出力は `file://` で直接開いてもCORSエラーにならないよう、`const SENTO_DATA = [...]` というJSファイルとして生成しています。
 
 ```python
-# 施設ごとに訪問日・座標を集約し、ランキング情報と結合してJSONを生成
+# 施設ごとに訪問日・座標を集約し、ランキング情報と結合してJSファイルを生成
 result.append({
     "name_ja": "○○温泉",
     "lat": 35.xxxxx,
@@ -95,10 +95,10 @@ const radius = 6 + (f.total_visits / maxVisits) * 24;
 
 const marker = L.circleMarker([f.lat, f.lng], {
   radius: radius,
-  fillColor: '#f97316',
-  fillOpacity: 0.7,
+  fillColor: '#2233a1',
+  fillOpacity: 0.65,
   color: '#fff',
-  weight: 1.5,
+  weight: 2,
 });
 ```
 
@@ -113,21 +113,20 @@ const marker = L.circleMarker([f.lat, f.lng], {
 
 ### ヒートマップ
 
-Leaflet.heatプラグインで訪問頻度のヒートマップを表示します。ダークテーマの地図タイルとの相性を考えて、明るめのグラデーション（紫→シアン→緑→黄→赤）を設定しました。
+Leaflet.heatプラグインで訪問頻度のヒートマップを表示します。ライトテーマの地図に合わせて、水色から濃紺へのグラデーションを設定しました。
 
 ```javascript
 heatLayer = L.heatLayer(points, {
   radius: 35,
   blur: 25,
-  minOpacity: 0.4,
+  minOpacity: 0.35,
   gradient: {
-    0.1: '#6366f1',
-    0.3: '#06b6d4',
-    0.5: '#22d3ee',
-    0.65: '#4ade80',
-    0.8: '#facc15',
-    0.9: '#f97316',
-    1.0: '#ef4444',
+    0.1: '#bfdbfe',
+    0.3: '#93c5fd',
+    0.5: '#3b82f6',
+    0.7: '#2233a1',
+    0.85: '#1e3a8a',
+    1.0: '#172554',
   },
 });
 ```
