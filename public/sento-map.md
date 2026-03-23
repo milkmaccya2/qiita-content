@@ -22,7 +22,7 @@ https://qiita.com/milkmaccya2/items/1e1ef669b9b5c5d78367
 
 地図にプロットしたら、行動圏の変化や旅先での銭湯訪問が可視化できて面白いのでは？と思い、Leafletを使った静的Webアプリを作ってみました。
 
-![全体像：マーカー表示とサイドバー](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/d3a4b5f5-4075-4e54-8c3c-d7aeb3bc717b.png)
+![全体像：マーカー表示とサイドバー](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/2fd8baec-dddf-4d92-a509-f6c0e362f494.png)
 *完成した銭湯マップ。訪問回数に応じてマーカーの大きさが変わる*
 
 ## 使った技術
@@ -31,11 +31,13 @@ https://qiita.com/milkmaccya2/items/1e1ef669b9b5c5d78367
 |------|------|----------|
 | [Leaflet](https://leafletjs.com/) | 地図表示 | 無料、軽量、APIキー不要 |
 | [Leaflet.heat](https://github.com/Leaflet/Leaflet.heat) | ヒートマップ | Leafletのプラグインとして簡単に導入できる |
-| [CARTO Dark Matter](https://carto.com/basemaps/) | 地図タイル | ダークテーマでデータが映える。無料 |
+| [CARTO Voyager](https://carto.com/basemaps/) | 地図タイル | 明るく温かみのあるデザイン。無料 |
 | GitHub Pages | ホスティング | 静的サイトなのでこれで十分。`docs/`配置で設定するだけ |
 | Python | データ前処理 | 前回のCSVをWebアプリ用のJSファイルに変換 |
 
 地図ライブラリはGoogle Maps JavaScript APIも候補でしたが、APIキーが必要で読者が試しにくいためLeafletにしました。ビルドツールも使わず、HTML + JS + CSSのシンプルな構成です。
+
+デザインはどこかで見たことがあるようなサウナ検索サイト風にしてみました。白背景にブルーのアクセントカラーで、施設のカード型UIやpill型の年フィルターなど、銭湯好きには馴染みのある雰囲気を目指しています。
 
 ## データの準備
 
@@ -106,7 +108,7 @@ const marker = L.circleMarker([f.lat, f.lng], {
 
 マーカーをクリックすると、施設名・訪問回数・期間・年別の内訳バーチャート・公式サイトリンクが表示されます。
 
-![ポップアップ表示](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/e1184bb6-88f0-4254-be27-8dc592645b96.png)
+![ポップアップ表示](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/0aeb2359-b63c-41ca-bc87-e9fd7558d3af.png)
 *年別のバーチャートで、いつ頃よく通っていたかがわかる*
 
 ### ヒートマップ
@@ -130,7 +132,7 @@ heatLayer = L.heatLayer(points, {
 });
 ```
 
-![ヒートマップ表示](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/adc2d411-1a06-4315-99e0-682ed2d296d4.png)
+![ヒートマップ表示](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/d5ee8519-9d8d-4987-a2f8-22d1d6f8ea7c.png)
 *東京エリアのヒートマップ。豊島区〜北区・台東区あたりが「銭湯ホットスポット」*
 
 ### 年別フィルター
