@@ -1,5 +1,5 @@
 ---
-title: Claude CodeのクラウドスケジュールタスクでNotionの自動要約を実現する
+title: ClaudeのクラウドスケジュールタスクでNotionの自動要約を実現する
 tags:
   - 自動化
   - AI
