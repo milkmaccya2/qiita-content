@@ -1,14 +1,14 @@
 ---
 title: Claude CodeのクラウドスケジュールタスクでNotionの自動要約を実現する
 tags:
+  - 自動化
+  - AI
+  - MCP
   - Notion
   - ClaudeCode
-  - 自動化
-  - MCP
-  - AI
 private: true
-updated_at: ''
-id: null
+updated_at: '2026-03-28T22:48:28+09:00'
+id: cdc48d29ed5345a2377d
 organization_url_name: null
 slide: false
 ignorePublish: false
