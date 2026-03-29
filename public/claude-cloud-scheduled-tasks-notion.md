@@ -6,7 +6,7 @@ tags:
   - Notion
   - Claude
   - CloudScheduledTasks
-private: true
+private: false
 updated_at: '2026-03-29T22:30:11+09:00'
 id: cdc48d29ed5345a2377d
 organization_url_name: null
