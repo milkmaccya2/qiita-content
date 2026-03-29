@@ -25,7 +25,7 @@ notion-summary-task/
 └── CLAUDE.md   ← これだけ（自然言語の指示が書かれている）
 ```
 
-今回使ったのは、2026年2月にリリースされた **[Cloud Scheduled Tasks]** という機能です（Pro/Max/Team/Enterpriseで利用可能）。
+今回使ったのは、2026年2月にリリースされた **Cloud Scheduled Tasks** という機能です（Pro/Max/Team/Enterpriseで利用可能）。
 
 https://code.claude.com/docs/en/web-scheduled-tasks
 
