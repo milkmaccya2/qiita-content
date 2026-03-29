@@ -7,7 +7,7 @@ tags:
   - Notion
   - Claude
 private: true
-updated_at: '2026-03-29T21:46:48+09:00'
+updated_at: '2026-03-29T21:55:25+09:00'
 id: cdc48d29ed5345a2377d
 organization_url_name: null
 slide: false
