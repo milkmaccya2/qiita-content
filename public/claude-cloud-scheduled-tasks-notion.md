@@ -1,5 +1,5 @@
 ---
-title: 【ハック】Claude課金勢へ。CLAUDE.mdを置くだけで最強のノーコード自動化サーバー(Zapier代替)を作る方法
+title: CLAUDE.mdを置くだけでノーコード自動化サーバーを作る — Cloud Scheduled Tasksのハック的活用法
 tags:
   - 自動化
   - AI
@@ -7,6 +7,7 @@ tags:
   - Notion
   - Claude
 private: true
+updated_at: '2026-03-29T21:26:00+09:00'
 id: cdc48d29ed5345a2377d
 organization_url_name: null
 slide: false
@@ -36,9 +37,9 @@ notion-summary-task/
 
 これを実現する手段としてNotion AI（[Businessプラン月$20/member](https://www.notion.com/ja/product/ai)）は非常に優秀です。メモを書いた瞬間にリアルタイムで要約が生成され、ユーザーの操作は一切不要。正直、この体験を手放すのは怖かったです。
 
-しかし、僕はすでにClaude Pro（月$20）に課金しています。**「すでに優秀なLLMに課金しているのに、同じような機能のために別のAIオプションや、Zapier等の自動化SaaSに二重で課金するのは悔しい」** という思いがありました。
+しかし、僕はすでにClaude Max（月$100）に課金しています。**「すでに優秀なLLMに課金しているのに、同じような機能のために別のAIオプションや自動化SaaSに二重で課金するのは悔しい」** という思いがありました。
 
-そこで、「Claude Proに組み込まれている機能をハックして、追加コストゼロで完全自動化の仕組みを作れないか？」と考えたのが今回のスタートです。
+そこで、「Claudeのサブスクに含まれている機能をハックして、追加コストゼロで完全自動化の仕組みを作れないか？」と考えたのが今回のスタートです。
 
 ## AI自動化アーキテクチャの比較
 
@@ -47,19 +48,19 @@ notion-summary-task/
 | アーキテクチャ | 構築の手軽さ | 運用・メンテ | 追加コスト | 柔軟性 |
 |---|:-:|:-:|:-:|:-:|
 | 特定SaaSのAI機能（例: Notion AI） | ◎ 設定のみ | ◎ 不要 | △ 月$20など | × そのSaaS内限定 |
-| Zapier / Make + AI API | ○ GUIベース | ○ 比較的楽 | △ 月$10〜20+API代 | ◎ 高い |
+| ノーコード自動化ツール（Dify / Make / n8n等） | ○ GUIベース | ○ 比較的楽 | △ 月$0〜20+API代 | ◎ 高い |
 | 自作スクリプト（GAS / Actions） | △ コード開発 | × API変更で壊れる | ◎ ほぼAPI代のみ | ◎ 高い |
 | **Cloud Scheduled Tasks（今回のハック）** | **○ 自然言語** | **◎ プロンプト修正** | **◎ Pro/Max内包（追加$0）※** | **○ MCP対応なら何でも** |
 
 ※ Cloud Scheduled TasksはClaude Pro/Maxプランのサブスクリプションに含まれており、追加課金なしで利用できます。筆者はMaxプラン契約者のため、この記事で紹介する構成は追加費用ゼロで実現しています。
 
-表の通り、Cloud Scheduled Tasksは **「Zapier並みの手軽さと柔軟性」を持ちながら、「追加コストゼロ（サブスク内包）」かつ「スクリプト保守の苦労なし」** という、最強のバランスを持っています。
+表の通り、Cloud Scheduled Tasksは **「ノーコードツール並みの手軽さ」を持ちながら、「追加コストゼロ（サブスク内包）」かつ「スクリプト保守の苦労なし」** という、Pro/Max契約者にとって見逃せない選択肢です。
 
 ## なぜ「空のリポジトリ」なのか？（今回のハックの仕組み）
 
 Cloud Scheduled TasksはGitHubリポジトリと紐付けて動きます。実行のたびにリポジトリをクローンし、その中のコードに対して処理を行うのが本来の使い方です。
 
-しかし、Claudeには強力な[MCP（Model Context Protocol）コネクタ](https://developers.notion.com/docs/mcp)が組み込まれており、Notion、Slack、Linearなどの外部ツールと直接やり取りができます。
+しかし、claude.aiのWeb版には [Connectors](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp) と呼ばれるリモートMCP統合機能が組み込まれています。Notion、Slack、Linearなど50以上の外部サービスとOAuth認証で接続でき、Cloud Scheduled Tasksからもそのまま利用できます。
 
 つまり、「リポジトリ内のコードに対する処理」を一切させず、**「MCP経由で外部APIを叩いてデータを処理させる」ことだけに特化させれば、実質的に高度なノーコード自動化サーバーとして機能する**わけです。
 
@@ -142,19 +143,19 @@ git push -u origin main
 
 <!-- TODO: スクリーンショット5 - タスク実行履歴/セッション画面 -->
 
-## 応用アイデア：Zapierの代わりに何をさせるか？
+## 応用アイデア：他に何をさせるか？
 
-今回はNotionの自動要約を例にしましたが、MCPコネクタが対応しているツールであれば何でもできます。以下のような「普段ならZapierで組んだり、専用Botを作ったりする処理」も、自然言語の指示書を置くだけで定期実行できます。
+今回はNotionの自動要約を例にしましたが、claude.aiのConnectorsが対応しているサービスであれば同じ手法が使えます。以下のような「普段ならDifyやMakeでワークフローを組んだり、専用スクリプトを書いたりする処理」も、自然言語の指示書を置くだけで定期実行できます。
 
 - **Slackのデイリー要約**: 毎日18時に #times や特定プロジェクトのチャンネルを読み取り、重要な決定事項だけを箇条書きにして別のチャンネルに投稿する
 - **GitHub Issueの自動トリアージ**: 毎日、未分類のIssueをチェックし、内容を読んで適切なラベル（bug, enhancement など）を自動で付与する
 - **Linearのタスク整理**: 放置されている古いタスクを検出し、担当者に状況確認のコメントを自動で残す
 
-ロジックの構築（条件分岐やデータ抽出）をすべてLLMの知能に丸投げできるため、Zapierで複雑なパスやフィルターを組むよりも圧倒的に簡単です。
+ロジックの構築（条件分岐やデータ抽出）をすべてLLMの知能に丸投げできるため、GUIでフィルターやパスを組むよりもシンプルです。
 
 ## まとめ
 
-本質は **「Cloud Scheduled Tasksは、自然言語で書ける高機能なZapier/Makeとして使える」** ということです。
+本質は **「Cloud Scheduled Tasksは、自然言語で書けるノーコード自動化基盤として使える」** ということです。
 
 - **究極のノーコード**: ロジックも条件分岐も自然言語（CLAUDE.md）で書ける
 - **メンテナンスフリー**: 外部APIの仕様変更はMCPコネクタ側が吸収してくれる
@@ -169,4 +170,5 @@ git push -u origin main
 - [Manage costs effectively - Claude Code Docs](https://code.claude.com/docs/en/costs)
 - [Notion AI](https://www.notion.com/ja/product/ai)
 - [Notion MCP - Official Docs](https://developers.notion.com/docs/mcp)
+- [claude.ai Connectors](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp)
 - [Google Apps Script Quotas](https://developers.google.com/apps-script/guides/services/quotas)
