@@ -6,6 +6,7 @@ tags:
   - MCP
   - Notion
   - Claude
+  - CloudScheduledTasks
 private: true
 updated_at: '2026-03-29T21:55:25+09:00'
 id: cdc48d29ed5345a2377d
@@ -25,7 +26,7 @@ notion-summary-task/
 └── CLAUDE.md   ← これだけ（自然言語の指示が書かれている）
 ```
 
-今回使ったのは、Claude（Pro/Max/Team/Enterprise）に搭載されている **[Cloud Scheduled Tasks](https://code.claude.com/docs/en/web-scheduled-tasks)** という機能です。
+今回使ったのは、2026年2月にリリースされた **[Cloud Scheduled Tasks](https://code.claude.com/docs/en/web-scheduled-tasks)** という機能です（Pro/Max/Team/Enterpriseで利用可能）。
 
 本来はリポジトリのコードに対して「依存関係をアップデートする」「テストを回す」といった開発ワークフローを定期実行するための機能です。しかし、**コードを一切置かず、CLAUDE.mdという指示書だけのリポジトリでMCPコネクタ経由の外部サービス操作に特化させる**ことで、DifyやMakeのようなノーコード自動化基盤として活用できます。これが今回の「ハック」です。
 
