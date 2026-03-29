@@ -150,7 +150,9 @@ git push -u origin main
 
 スケジュール通りにクラウドで実行され、要約カラムが空だったレコードに要約が書き込まれます。PCを閉じていても、寝ていても確実に動きます。
 
-<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/63e656d5-a75c-42b8-b2d8-7a67a498921e.gif" alt="notion-summary-result" width="600">
+以下は、筆者のQiitaマイページをNotionにWebクリップしたレコードが自動要約されるデモです。
+
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/63e656d5-a75c-42b8-b2d8-7a67a498921e.gif" alt="QiitaマイページをWebクリップしたNotionレコードが自動要約されるデモ" width="600">
 
 実行の過程はタスク詳細ページからセッションログとして確認できます。Claudeが何をしたか（どのレコードを読み、どんな要約を書いたか）を後から追跡できるので、結果が想定と違った場合のデバッグにも使えます。
 
