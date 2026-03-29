@@ -1,7 +1,6 @@
 ---
 title: CLAUDE.mdを置くだけでノーコード自動化サーバーを作る — Cloud Scheduled Tasksのハック的活用法
 tags:
-  - 自動化
   - AI
   - MCP
   - Notion
@@ -26,13 +25,15 @@ notion-summary-task/
 └── CLAUDE.md   ← これだけ（自然言語の指示が書かれている）
 ```
 
-今回使ったのは、2026年2月にリリースされた **[Cloud Scheduled Tasks](https://code.claude.com/docs/en/web-scheduled-tasks)** という機能です（Pro/Max/Team/Enterpriseで利用可能）。
+今回使ったのは、2026年2月にリリースされた **[Cloud Scheduled Tasks]** という機能です（Pro/Max/Team/Enterpriseで利用可能）。
+
+https://code.claude.com/docs/en/web-scheduled-tasks
 
 本来はリポジトリのコードに対して「依存関係をアップデートする」「テストを回す」といった開発ワークフローを定期実行するための機能です。しかし、**コードを一切置かず、CLAUDE.mdという指示書だけのリポジトリでMCPコネクタ経由の外部サービス操作に特化させる**ことで、DifyやMakeのようなノーコード自動化基盤として活用できます。これが今回の「ハック」です。
 
 この記事では、Notionの自動要約を例に、この構成の作り方を紹介します。
 
-## 背景：Claudeの元を全力で取る
+## 背景
 
 僕は生活や技術のメモをすべてNotionのInboxに投げており、「溜まったメモをAIに定期的に要約してほしい」と思っていました。
 
@@ -61,7 +62,7 @@ notion-summary-task/
 
 Cloud Scheduled TasksはGitHubリポジトリと紐付けて動きます。実行のたびにリポジトリをクローンし、その中のコードに対して処理を行うのが本来の使い方です。
 
-しかし、claude.aiのWeb版には [Connectors](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp) と呼ばれるリモートMCP統合機能が組み込まれています。Notion、Slack、Linear、Asana、Figmaなどの外部サービスとOAuth認証で接続でき、Cloud Scheduled Tasksからもそのまま利用できます（[対応サービス一覧](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp)）。
+しかし、claude.aiのWeb版には [Connectors](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp) と呼ばれるリモートMCP統合機能が組み込まれています。Notion、Slack、Linearなどの外部サービスとOAuth認証で接続でき、Cloud Scheduled Tasksからもそのまま利用できます（[対応サービス一覧](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp)）。
 
 つまり、「リポジトリ内のコードに対する処理」を一切させず、**「Connectors経由で外部サービスのデータを処理させる」ことだけに特化させれば、実質的にノーコード自動化基盤として機能する**わけです。
 
@@ -122,19 +123,9 @@ git push -u origin main
 
 ### 4. スケジュールタスクを作成する
 
-[claude.ai/code/scheduled](https://code.claude.com/docs/en/web-scheduled-tasks) のWeb UIから「新しいスケジュールタスク」を作成します。
+[claude.ai/code/scheduled](https://claude.ai/code/scheduled) のWeb UIから「新しいスケジュールタスク」を作成します。
 
-<!-- TODO: スクリーンショット1
-  撮影対象: claude.ai/code/scheduled のページ全体（タスク一覧が見える状態）
-  目的: 読者に「ここからタスクを作る」という入口を見せる
-  撮影手順: claude.ai/code/scheduled にアクセスし、ページ全体をキャプチャ
--->
-
-<!-- TODO: スクリーンショット2
-  撮影対象: タスク設定画面（既にお持ちの設定画面スクショが使えます）
-  目的: プロンプト・モデル・リポジトリ・スケジュール・コネクタの設定項目を見せる
-  撮影手順: notion要約タスクの編集画面を開いてキャプチャ（DB IDなどの個人情報はモザイク）
--->
+![スクリーンショット 2026-03-29 22.07.30.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/32ab3719-6368-4356-a197-5b72051f25e3.png)
 
 設定内容は以下の通りです。
 
@@ -143,8 +134,11 @@ git push -u origin main
 | **プロンプト** | CLAUDE.mdを参照し、Notion DBの要約カラムが空のレコードを検出して本文を読み取り、要約を書き込め。 |
 | **モデル** | Opus 4.6（300字要約程度ならSonnet 4.6でも十分。本文が長いページが多い場合はOpusが安定） |
 | **リポジトリ** | `yourname/notion-summary-task` |
-| **スケジュール** | `0 */6 * * *`（6時間ごと） |
+| **スケジュール** | カスタムcron `0 */6 * * *`（6時間ごと）。UIのプリセットは毎時/毎日/平日/毎週。カスタム間隔はドロップダウンから「カスタムcron」を選択してcron式を入力。最小間隔は1時間。 |
 | **コネクタ** | Notionを追加（OAuth認可） |
+
+![スクリーンショット 2026-03-29 22.10.15.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/a1f4b00c-16c6-4f17-baf3-8d0dd81a7062.png)
+
 
 プロンプトが1行で済むのは、詳細をすべて `CLAUDE.md` に書いているからです。条件を変えたい時は `CLAUDE.md` を更新してpushするだけで、次回実行から反映されます。
 
@@ -152,30 +146,15 @@ git push -u origin main
 
 コネクタの「Notion」を追加すると、OAuthの認可フローが走ります。認可画面ではページピッカーが表示され、**アクセスを許可するページ・データベースを個別に選択**できます（[Notion公式: Authorization](https://developers.notion.com/guides/get-started/authorization)）。ワークスペース全体ではなく、対象のDBだけにアクセスを絞ることが可能です。
 
-<!-- TODO: スクリーンショット3
-  撮影対象: Notionコネクタ接続時のOAuth認可画面（ページピッカーが表示されている状態）
-  目的: 読者にアクセス範囲を選択できることを視覚的に示す
-  撮影手順: コネクタ設定でNotionを追加し、認可画面が表示されたらキャプチャ（個人情報はモザイク）
--->
-
 ## 動作結果
 
 スケジュール通りにクラウドで実行され、要約カラムが空だったレコードに要約が書き込まれます。PCを閉じていても、寝ていても確実に動きます。
 
-<!-- TODO: スクリーンショット4
-  撮影対象: Notionのデータベース画面で、要約カラムが埋まっている状態
-  目的: 「本当に動いた」という証拠を見せる。Before/Afterがわかるとベスト
-  撮影手順: 要約が書き込まれたNotionのInbox DBをキャプチャ（メモの内容はモザイク推奨）
-  GIFにできるなら: 要約カラムが空の状態 → タスク実行後に埋まった状態を連続で見せる
--->
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/63e656d5-a75c-42b8-b2d8-7a67a498921e.gif" alt="notion-summary-result" width="600">
 
 実行の過程はタスク詳細ページからセッションログとして確認できます。Claudeが何をしたか（どのレコードを読み、どんな要約を書いたか）を後から追跡できるので、結果が想定と違った場合のデバッグにも使えます。
 
-<!-- TODO: スクリーンショット5
-  撮影対象: タスク詳細ページの実行履歴、またはセッションログ画面
-  目的: 実行ログが残ることを示す（透明性・デバッグ可能性のアピール）
-  撮影手順: claude.ai/code/scheduled からタスクをクリックし、実行履歴 or セッション画面をキャプチャ
--->
+![スクリーンショット 2026-03-29 22.21.55.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/b4d65eed-ca94-4ff4-bf2b-e9ca7fcf0579.png)
 
 ## 応用アイデア：他に何をさせるか？
 
