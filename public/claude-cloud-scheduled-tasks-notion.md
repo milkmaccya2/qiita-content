@@ -1,13 +1,12 @@
 ---
-title: コードゼロ・CLAUDE.mdだけのリポジトリでNotionの自動要約を動かす
+title: 【ハック】Claude課金勢へ。CLAUDE.mdを置くだけで最強のノーコード自動化サーバー(Zapier代替)を作る方法
 tags:
   - 自動化
   - AI
   - MCP
   - Notion
-  - ClaudeCode
+  - Claude
 private: true
-updated_at: '2026-03-29T18:50:23+09:00'
 id: cdc48d29ed5345a2377d
 organization_url_name: null
 slide: false
@@ -16,117 +15,72 @@ ignorePublish: false
 
 ## はじめに
 
-リポジトリにコードは1行もない。あるのは `CLAUDE.md` という「指示書」が1ファイルだけ。それだけでNotionの自動要約が6時間ごとに動いている。
+GitHubリポジトリにソースコードは1行もありません。あるのは `CLAUDE.md` という「自然言語の指示書」が1ファイルだけ。
 
-```
+たったこれだけで、**「6時間ごとにNotionの未要約メモを検出し、内容を読んで300字以内で要約を書き込む」** という定期バッチ処理がAnthropicのクラウド上で動き続けています。
+
+```text
 notion-summary-task/
-└── CLAUDE.md   ← これだけ
+└── CLAUDE.md   ← これだけ（プロンプトが書かれている）
 ```
 
-Claudeのクラウドスケジュールタスクという機能を使うと、**自然言語で書いた指示をクラウドで定期実行**できます。リポジトリは普通「コードの置き場」ですが、ここでは「指示書の置き場」として使います。
+今回使ったのは、Claude（Pro/Max）に搭載されている **「Cloud Scheduled Tasks」** という機能です。
 
-この記事では、Notionの自動要約を実現する方法を比較検討した上で、このコードゼロ構成の作り方を紹介します。
+本来は「定期的に依存関係をアップデートする」「テストを回す」といった開発ワークフローのための機能ですが、これを**ZapierやMakeのような「ノーコードiPaaS」としてハック**してみたところ、最高に便利でした。
 
-## 背景
+この記事では、**「Claude Pro/Maxに課金しているなら絶対に使い倒すべき、最強の自動化基盤の作り方」** を、Notionの自動要約を例に紹介します。
 
-僕は生活・育児・技術のメモを、すべてNotionのInboxにポイポイ入れています。日々溜まっていくメモは、後から探すときに「このページ何だったっけ？」となりがちです。要約があればパッと中身がわかるのですが、毎回手動で書くのは面倒。
+## 背景：Claudeの元を全力で取る
 
-以前はNotion AIの自動要約機能を使っていました。メモを書いたら裏側で勝手に要約してくれる、とても便利な機能です。ただ、これには追加の課金が必要でした。Claude（Pro/Max）を既に契約している身としては、「同じことができるのに追加で月$20払い続けるか？」と考え、代替手段を探しました。
+僕は生活や技術のメモをすべてNotionのInboxに投げており、「溜まったメモをAIに定期的に要約してほしい」と思っていました。
 
-## やりたいこと
+これを実現する手段としてNotion AI（[Businessプラン月$20/member](https://www.notion.com/ja/product/ai)）は非常に優秀です。メモを書いた瞬間にリアルタイムで要約が生成され、ユーザーの操作は一切不要。正直、この体験を手放すのは怖かったです。
 
-要件はシンプルです。
+しかし、僕はすでにClaude Pro（月$20）に課金しています。**「すでに優秀なLLMに課金しているのに、同じような機能のために別のAIオプションや、Zapier等の自動化SaaSに二重で課金するのは悔しい」** という思いがありました。
 
-- Notion DBの各レコードの**コンテンツを読み取って、300字以内で要約**する
-- 要約カラムが空のレコードだけを対象にする
-- **定期的に自動実行**する（PCの起動状態に依存しない）
-- できれば**コードを書かずに**済ませたい
+そこで、「Claude Proに組み込まれている機能をハックして、追加コストゼロで完全自動化の仕組みを作れないか？」と考えたのが今回のスタートです。
 
-## 方法の比較検討
+## AI自動化アーキテクチャの比較
 
-Notionの自動要約を実現する方法は複数あります。それぞれの特徴を整理しました。
+定期的なAI処理（今回の例ならNotion要約）を構築するためのアーキテクチャを比較します。
 
-### 比較表
-
-| 方法 | 構築の手軽さ | メンテナンス | コスト | 即時性 | 必要スキル |
-|------|:-----------:|:----------:|:-----:|:-----:|-----------|
-| Notion AI | ◎ 設定のみ | ◎ 不要 | △ 月$20/member | ◎ リアルタイム | 不要 |
-| GitHub Actions + Claude API | △ コード開発 | × コード修正 | ◎ API従量課金 | △ cron依存 | 開発力 |
-| GAS + AI API | △ コード開発 | × コード修正 | ◎ API従量課金 | △ トリガー依存 | 開発力 |
-| Zapier / Make | ○ GUI設定 | ○ GUI再設定 | △ 月$9〜20 | ○ トリガー対応 | 低 |
-| **Cloud Scheduled Tasks** | **○ 自然言語** | **◎ プロンプト修正** | **◎ Pro/Max内 ※** | **△ 最小1時間** | **Git基本操作** |
+| アーキテクチャ | 構築の手軽さ | 運用・メンテ | 追加コスト | 柔軟性 |
+|---|:-:|:-:|:-:|:-:|
+| 特定SaaSのAI機能（例: Notion AI） | ◎ 設定のみ | ◎ 不要 | △ 月$20など | × そのSaaS内限定 |
+| Zapier / Make + AI API | ○ GUIベース | ○ 比較的楽 | △ 月$10〜20+API代 | ◎ 高い |
+| 自作スクリプト（GAS / Actions） | △ コード開発 | × API変更で壊れる | ◎ ほぼAPI代のみ | ◎ 高い |
+| **Cloud Scheduled Tasks（今回のハック）** | **○ 自然言語** | **◎ プロンプト修正** | **◎ Pro/Max内包（追加$0）※** | **○ MCP対応なら何でも** |
 
 ※ Cloud Scheduled TasksはClaude Pro/Maxプランのサブスクリプションに含まれており、追加課金なしで利用できます。筆者はMaxプラン契約者のため、この記事で紹介する構成は追加費用ゼロで実現しています。
 
-### Notion AI
+表の通り、Cloud Scheduled Tasksは **「Zapier並みの手軽さと柔軟性」を持ちながら、「追加コストゼロ（サブスク内包）」かつ「スクリプト保守の苦労なし」** という、最強のバランスを持っています。
 
-正直に言うと、Notion AIの自動要約は素晴らしいです。メモを書いた瞬間にリアルタイムで要約が生成され、ユーザーの操作は一切不要。イベント駆動で動くため、「書いたら勝手に要約されている」という体験は他の方法では再現できません。正直、この体験を手放すのは怖かったです。
+## なぜ「空のリポジトリ」なのか？（今回のハックの仕組み）
 
-ただし、完全なAI機能（自動要約含む）を使うには[Businessプラン（月$20/member）](https://www.notion.com/ja/product/ai)が必要です。Claude Pro/Maxを既に契約している場合、同じことがほぼ実現できるのに追加で月$20を払い続けるかは悩みどころです。リアルタイム性が必須でなければ、数時間ごとのバッチ処理で十分という判断もあります。
+Cloud Scheduled TasksはGitHubリポジトリと紐付けて動きます。実行のたびにリポジトリをクローンし、その中のコードに対して処理を行うのが本来の使い方です。
 
-### GitHub Actions + Claude API
+しかし、Claudeには強力な[MCP（Model Context Protocol）コネクタ](https://developers.notion.com/docs/mcp)が組み込まれており、Notion、Slack、Linearなどの外部ツールと直接やり取りができます。
 
-GitHub Actionsのcronトリガーで定期実行し、スクリプト内でNotion APIとClaude APIを呼び出す構成です。Claude API（Haiku）なら月$0.16程度と非常に安い。ただし、**スクリプトを書く必要がある**のと、Notion APIやClaude APIに破壊的変更があればコードの修正が必要です。なお、GitHub Actionsのcronは15〜30分程度の遅延が発生することがありますが、要約用途ではほぼ問題にならないでしょう。
+つまり、「リポジトリ内のコードに対する処理」を一切させず、**「MCP経由で外部APIを叩いてデータを処理させる」ことだけに特化させれば、実質的に高度なノーコード自動化サーバーとして機能する**わけです。
 
-### GAS（Google Apps Script）+ AI API
+これが、コードゼロ・CLAUDE.mdのみの空リポジトリを用意した理由です。自分でAPIクライアントを書かないため、Notion APIの破壊的変更があっても自分がコードを直す必要はありません。MCPコネクタ側が追従してくれます。
 
-GASのトリガーで定期実行し、Notion APIとAI API（Gemini/Claude）を呼び出す構成。GitHub Actionsと似ていますが、**[単一実行6分の制限](https://developers.google.com/apps-script/guides/services/quotas)**があります。処理対象が多いと時間切れになるリスクがあり、安定運用には工夫が必要です。
-
-### Zapier / Make
-
-ノーコードで構築できます。GUIでNotion→AI要約→Notion書き戻しのワークフローを組めます。ただし、Zapierなら月$19.99〜、Makeなら月$9〜の**別途課金**が発生します。Notion AIの課金をやめたのに別のSaaSに課金するのは本末転倒です。
-
-### Cloud Scheduled Tasks
-
-Claude Code（Pro/Max）に含まれるクラウド定期実行機能です。**自然言語のプロンプトでタスクを定義**し、MCPコネクタ経由でNotionと連携します。Pro/Max契約者なら追加費用ゼロ。自分でAPIを叩くコードを書かないため、APIの変更に自分で追従する必要がありません。メンテナンスが必要になるとすればプロンプトの微修正程度です。ただし、GitHubリポジトリの作成やCLAUDE.mdの記述など、最低限のGit操作は必要です。
-
-### 比較のポイント: メンテナンスコスト
-
-初期構築の手間だけでなく、**運用後のメンテナンスコスト**が重要です。
-
-スクリプト型（GitHub Actions、GAS）は、APIの破壊的変更があればコードを書き換える必要があります。Notion APIもClaude APIもアクティブに更新されているため、これは現実的なリスクです。
-
-一方、Cloud Scheduled Tasksは自然言語でタスクを定義しています。自分でAPIクライアントのコードを書いていないため、APIの仕様変更があっても自分でコードを修正する必要がありません。MCPコネクタやClaude自身のアップデートで対応されるケースが多く、自分の作業としてはプロンプトの微修正で済みます。もちろんMCPコネクタ側に不具合が出る可能性はゼロではありませんが、自前のスクリプトを保守し続けるよりは圧倒的に楽です。
-
-## Cloud Scheduled Tasksとは
-
-Claudeには3つのスケジューリング方法があります（[公式ドキュメント](https://code.claude.com/docs/en/web-scheduled-tasks)）。
-
-| | Cloud Scheduled Tasks | Desktop Scheduled Tasks | /loop |
-|---|---|---|---|
-| 実行環境 | Anthropicクラウド | ローカルPC | ローカルPC |
-| 利用に必要なもの | なし | Desktopアプリ起動中 | CLIセッション維持 |
-| 最小間隔 | 1時間 | 1分 | 1分 |
-
-実は最初、Claude Coworkのスケジュール機能（Desktop Scheduled Tasks）を使っていました（[参考](https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-cowork)）。これはローカルPCで動くため、PCを閉じている間は実行されません。夜間や外出中に要約が走らないのが不便で、Cloud Scheduled Tasksに移行しました。
-
-Cloud Scheduled TasksはAnthropicのクラウドインフラで実行されるため、PCの状態に一切依存しません。設定したスケジュール通りに、確実に動きます。
-
-なお、Cloud Scheduled Tasksの作成・管理は `claude.ai/code/scheduled` のWeb UIから行えます。claude.aiにはNotion、Slack、Linearなどの[MCPコネクタ](https://developers.notion.com/docs/mcp)が組み込まれており、OAuthで接続するだけでタスクから利用できます。
-
-## セットアップ手順
+## セットアップ手順（Notion自動要約の例）
 
 ### 1. リポジトリを用意する
 
-Cloud Scheduled TasksはGitHubリポジトリが必須です。実行のたびにデフォルトブランチからクローンし、その中のCLAUDE.mdをコンテキストとして読み込む仕組みになっています。つまり、リポジトリはコードを置く場所ではなく、タスクの設定ファイル置き場として使います。
-
-今回はコード変更が目的ではないので、最小限のリポジトリを作ります。必要なのはCLAUDE.md1ファイルだけです。
-
-```
-notion-summary-task/
-└── CLAUDE.md   ← これだけ
-```
+設定ファイル置き場としてのリポジトリを作ります。必要なのは `CLAUDE.md` 1ファイルだけです。
 
 ### 2. CLAUDE.mdを書く
 
-タスクの実行コンテキストとして、CLAUDE.mdにNotion DBの情報と要約ルールを書いておきます。
+タスクの実行コンテキストとして、Notion DBの情報と要約ルールを自然言語で書きます。Zapierでいうところのワークフロー設定です。
 
 ```markdown
 # Notion 要約タスク
 
 ## 概要
 Notion Inbox DBの「要約」カラムが空のレコードを検出し、
-コンテンツを読み取って300字以内の日本語で要約を生成・書き込むタスク。
+コンテンツを読み取って300字以内の日本語で要約を生成・書き込む。
 
 ## Notion DB 情報
 - DB ID: `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
@@ -137,18 +91,13 @@ Notion Inbox DBの「要約」カラムが空のレコードを検出し、
 |-----------|------|------|
 | 名前 | title | ページタイトル |
 | 日付 | created_time | 作成日 |
-| 要約 | text | 要約テキスト（このカラムに書き込む） |
-| URL | url | 元のURL |
-| タグ | multi_select | カテゴリタグ |
+| 要約 | text | 要約テキスト（ここに書き込む） |
 
 ## 要約ルール
 - 日本語で300字以内
-- ページのコンテンツ（本文）を読み取って要約する
-- 要約カラムが空のレコードのみ対象
-- 既に要約が入っているレコードはスキップ
+- ページの本文を読み取って要約する
+- 要約カラムが空のレコードのみ対象（既存のものはスキップ）
 ```
-
-ポイントは、**プロンプトではなくCLAUDE.mdに詳細を書く**ことです。プロンプトはシンプルに「CLAUDE.mdを参照して実行しろ」とだけ書けば、毎回のクローン時にCLAUDE.mdが読み込まれます。
 
 ### 3. GitHubにpushする
 
@@ -162,74 +111,62 @@ git push -u origin main
 
 ### 4. スケジュールタスクを作成する
 
-`claude.ai/code/scheduled` にアクセスし、「新しいスケジュールタスク」を作成します。
+[claude.ai/code/scheduled](https://code.claude.com/docs/en/web-scheduled-tasks) のWeb UIから「新しいスケジュールタスク」を作成します。
 
 <!-- TODO: スクリーンショット1 - claude.ai/code/scheduled のタスク一覧画面 -->
 <!-- TODO: スクリーンショット2 - タスク設定画面全体 -->
 
 設定内容は以下の通りです。
 
-**名前**: `notion要約タスク`
+| 項目 | 設定値 |
+|------|--------|
+| **プロンプト** | CLAUDE.mdを参照し、Notion DBの要約カラムが空のレコードを検出して本文を読み取り、要約を書き込め。 |
+| **モデル** | Opus 4.6（用途に応じてSonnetでも可） |
+| **リポジトリ** | `yourname/notion-summary-task` |
+| **スケジュール** | `0 */6 * * *`（6時間ごと） |
+| **コネクタ** | Notionを追加（OAuth認可） |
 
-**プロンプト**:
-```
-CLAUDE.mdを参照し、Notion Inbox DBの要約カラムが空のレコードを検出して
-コンテンツを読み取り、300字以内の日本語で要約を書き込め。
-```
+プロンプトが1行で済むのは、詳細をすべて `CLAUDE.md` に書いているからです。条件を変えたい時は `CLAUDE.md` を更新してpushするだけで反映されます。
 
-**モデル**: Opus 4.6（1Mコンテキスト）
-※ 300字要約だけならSonnet 4.6でも十分です。今回はNotionページの本文が長いケースも想定してOpusを選びましたが、コストを抑えたい場合はSonnetを選択するとよいでしょう。
-
-**リポジトリ**: `yourname/notion-summary-task`
-
-**スケジュール**: カスタムcron `0 */6 * * *`（6時間ごと）
-
-**コネクタ**: Notion
-
-プロンプトがこれだけで済むのは、CLAUDE.mdにすべての詳細を書いているからです。タスクの修正が必要になったときも、CLAUDE.mdを更新してpushするだけで反映されます。
-
-### 5. Notionコネクタの接続
-
-コネクタの「Notion」を追加すると、OAuthの認可フローが走ります。Notionのワークスペースを選択して権限を許可すれば、以降はCloud Scheduled Tasksから自動的にNotionにアクセスできます。
-
-なお、OAuthの認可時にアクセスを許可するページ・データベースの範囲を選択できます。プライベートなメモをクラウドで処理することに懸念がある場合は、対象のDBだけにアクセスを絞るとよいでしょう。
+なお、Notionコネクタ接続時のOAuth認可では、アクセスを許可するページ・データベースの範囲を選択できます。プライベートなメモをクラウドで処理することに懸念がある場合は、対象のDBだけにアクセスを絞るとよいでしょう。
 
 <!-- TODO: スクリーンショット3 - Notionコネクタ接続時のOAuth認可画面 -->
 
 ## 動作結果
 
-タスクが実行されると、要約カラムが空だったレコードに要約が書き込まれます。
+スケジュール通りにクラウドで実行され、要約カラムが空だったレコードに要約が書き込まれます。PCを閉じていても、寝ていても確実に動きます。
 
 <!-- TODO: スクリーンショット4 - 要約が埋まったNotionのDB画面（Before/After） -->
 
-実行履歴はタスクの詳細ページから確認できます。各実行はセッションとして記録され、何をしたかを後から確認できます。
+実行の過程（セッションログ）はWeb UIから確認可能です。
 
 <!-- TODO: スクリーンショット5 - タスク実行履歴/セッション画面 -->
 
+## 応用アイデア：Zapierの代わりに何をさせるか？
+
+今回はNotionの自動要約を例にしましたが、MCPコネクタが対応しているツールであれば何でもできます。以下のような「普段ならZapierで組んだり、専用Botを作ったりする処理」も、自然言語の指示書を置くだけで定期実行できます。
+
+- **Slackのデイリー要約**: 毎日18時に #times や特定プロジェクトのチャンネルを読み取り、重要な決定事項だけを箇条書きにして別のチャンネルに投稿する
+- **GitHub Issueの自動トリアージ**: 毎日、未分類のIssueをチェックし、内容を読んで適切なラベル（bug, enhancement など）を自動で付与する
+- **Linearのタスク整理**: 放置されている古いタスクを検出し、担当者に状況確認のコメントを自動で残す
+
+ロジックの構築（条件分岐やデータ抽出）をすべてLLMの知能に丸投げできるため、Zapierで複雑なパスやフィルターを組むよりも圧倒的に簡単です。
+
 ## まとめ
 
-Notionの自動要約を実現する方法はいくつかありますが、Claude Code（Pro/Max）契約者にとっては**Cloud Scheduled Tasks**が最もバランスの良い選択肢です。
+本質は **「Cloud Scheduled Tasksは、自然言語で書ける高機能なZapier/Makeとして使える」** ということです。
 
-- **コードを書かない**: 自然言語のプロンプトとCLAUDE.mdだけで定義
-- **自分でメンテするコードがない**: API変更への追従はMCPコネクタ側で行われる
-- **追加課金なし**: Pro/Maxプランのサブスクリプション内で利用可能
+- **究極のノーコード**: ロジックも条件分岐も自然言語（CLAUDE.md）で書ける
+- **メンテナンスフリー**: 外部APIの仕様変更はMCPコネクタ側が吸収してくれる
+- **追加課金なし**: Pro/Maxプランの範囲内で完結する
 
-こんな人に向いています:
-- Claude Code（Pro/Max）を契約している
-- スクリプトを書くより自然言語で済ませたい
-- PCを常時起動しておきたくない
-
-逆に、Claude Codeを契約していない場合やAPIコストを極限まで抑えたい場合は、GitHub Actions + Claude API（Haiku）が最もコスパの良い選択肢です。ノーコードで手軽に始めたいならZapierやMakeも検討の価値があります。
-
-自然言語でタスクを定義して、クラウドで自動実行する。スクリプトを書いてcronで回していた時代と比べると、自動化のハードルがかなり下がったと感じます。
+「スクリプトを書いてcronで回す」時代から、「空のリポジトリに指示書だけ置いてAIに定期実行させる」時代へ。Claude課金勢の皆様は、ぜひ手元の自動化タスクをこの方法に置き換えてみてください。
 
 ## 参考文献
 
 - [Schedule tasks on the web - Claude Code Docs](https://code.claude.com/docs/en/web-scheduled-tasks)
 - [Run prompts on a schedule - Claude Code Docs](https://code.claude.com/docs/en/scheduled-tasks)
-- [Use Claude Code Desktop](https://code.claude.com/docs/en/desktop)
 - [Manage costs effectively - Claude Code Docs](https://code.claude.com/docs/en/costs)
 - [Notion AI](https://www.notion.com/ja/product/ai)
 - [Notion MCP - Official Docs](https://developers.notion.com/docs/mcp)
-- [Schedule recurring tasks in Cowork - Claude Help Center](https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-cowork)
 - [Google Apps Script Quotas](https://developers.google.com/apps-script/guides/services/quotas)
