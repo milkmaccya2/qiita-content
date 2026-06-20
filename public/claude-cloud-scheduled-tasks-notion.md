@@ -1,13 +1,13 @@
 ---
-title: CLAUDE.mdを置くだけでノーコード自動化サーバーを作る — Cloud Scheduled Tasksのハック的活用法
+title: CLAUDE.mdを置くだけでノーコード自動化サーバーを作る — Claude Code Routinesのハック的活用法
 tags:
   - AI
   - MCP
   - Notion
   - Claude
-  - CloudScheduledTasks
+  - Routines
 private: false
-updated_at: '2026-03-29T22:31:16+09:00'
+updated_at: '2026-06-20T00:00:00+09:00'
 id: cdc48d29ed5345a2377d
 organization_url_name: null
 slide: false
@@ -27,7 +27,12 @@ notion-summary-task/
 
 今回使ったのは、2026年2月にリリースされた **Cloud Scheduled Tasks** という機能です（Pro/Max/Team/Enterpriseで利用可能）。
 
-https://code.claude.com/docs/en/web-scheduled-tasks
+https://code.claude.com/docs/en/routines
+
+:::note warn
+**2026年4月の機能統合について**
+この機能は2026年4月14日に **Routines（ルーチン）** として再構成されました。スケジュール実行（Schedule）に加えてAPI呼び出し・GitHub イベントでも起動できる「トリガー」の1種という位置付けに変わり、管理UIも `claude.ai/code/routines` に変わっています。本記事は元のCloud Scheduled Tasks時代に書いたものですが、根幹の「CLAUDE.mdだけのリポジトリ＋Connectors」という構成は変わらず有効です。本文中の名称・UI説明は適宜「Routines」に読み替えてください。
+:::
 
 本来はリポジトリのコードに対して「依存関係をアップデートする」「テストを回す」といった開発ワークフローを定期実行するための機能です。しかし、**コードを一切置かず、CLAUDE.mdという指示書だけのリポジトリでMCPコネクタ経由の外部サービス操作に特化させる**ことで、DifyやMakeのようなノーコード自動化基盤として活用できます。これが今回の「ハック」です。
 
@@ -52,23 +57,23 @@ https://code.claude.com/docs/en/web-scheduled-tasks
 | 特定SaaSのAI機能（例: Notion AI） | ◎ 設定のみ | ◎ 不要 | △ 月$20など | × そのSaaS内限定 |
 | ノーコード自動化ツール（Dify / Make / n8n等）※1 | ○ GUIベース | ○ 比較的楽 | △ 無料〜月$20+API代 | ◎ 高い |
 | 自作スクリプト（GAS / Actions） | △ コード開発 | △ API変更時にコード修正 | ◎ ほぼAPI代のみ | ◎ 高い |
-| **Cloud Scheduled Tasks（今回の構成）** | **○ 自然言語** | **○ プロンプト修正 ※2** | **◎ Pro/Max内包（追加$0）※3** | **○ Connectors対応サービス** |
+| **Routines（旧Cloud Scheduled Tasks、今回の構成）** | **○ 自然言語** | **○ プロンプト修正 ※2** | **◎ Pro/Max内包（追加$0）※3** | **○ Connectors対応サービス** |
 
 ※1 Difyやn8nはセルフホストなら無料。Makeは月$9〜、クラウド版n8nは月€24〜。
 ※2 MCPコネクタ側の更新で多くの変更は吸収されますが、Notion DB側のスキーマ変更やコネクタ自体の不具合時はプロンプトやCLAUDE.mdの修正が必要になる場合があります。
-※3 Cloud Scheduled TasksはPro、Max、Team、Enterpriseの全プランで利用可能です。ただしProプランは使用量の上限がMaxより低いため、高頻度の実行にはMaxの方が適しています。筆者はMaxプラン契約者です。
+※3 RoutinesはPro、Max、Team、Enterpriseの全プランで利用可能です。ただしProプランは使用量の上限がMaxより低いため、高頻度の実行にはMaxの方が適しています。筆者はMaxプラン契約者です。
 
 ## なぜ「空のリポジトリ」なのか？
 
-Cloud Scheduled TasksはGitHubリポジトリと紐付けて動きます。実行のたびにリポジトリをクローンし、その中のコードに対して処理を行うのが本来の使い方です。
+RoutinesはGitHubリポジトリと紐付けて動きます。実行のたびにリポジトリをクローンし、その中のコードに対して処理を行うのが本来の使い方です。
 
-しかし、claude.aiのWeb版には [Connectors](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp) と呼ばれるリモートMCP統合機能が組み込まれています。Notion、Slack、Linearなどの外部サービスとOAuth認証で接続でき、Cloud Scheduled Tasksからもそのまま利用できます（[対応サービス一覧](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp)）。
+しかし、claude.aiのWeb版には [Connectors](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp) と呼ばれるリモートMCP統合機能が組み込まれています。Notion、Slack、Linearなどの外部サービスとOAuth認証で接続でき、Routinesからもそのまま利用できます（[対応サービス一覧](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp)）。
 
 つまり、「リポジトリ内のコードに対する処理」を一切させず、**「Connectors経由で外部サービスのデータを処理させる」ことだけに特化させれば、実質的にノーコード自動化基盤として機能する**わけです。
 
 これが、コードゼロ・CLAUDE.mdのみのリポジトリを用意した理由です。自分でAPIクライアントを書かないため、Notion APIの仕様変更があっても自分がコードを直す必要はありません。Connectors側のアップデートで対応されるケースが多いです（ただしSLAが保証されているわけではないので、Connectors自体に不具合が出る可能性はゼロではありません）。
 
-なお、クローンされたリポジトリ内の `CLAUDE.md` は、Claude Codeのセッション開始時に自動的にコンテキストとして読み込まれます。これはClaude Codeの標準動作で、Cloud Scheduled Tasksでも同様です。だからこそ、プロンプトを1行にして詳細はすべて `CLAUDE.md` に書くという構成が成り立ちます。
+なお、クローンされたリポジトリ内の `CLAUDE.md` は、Claude Codeのセッション開始時に自動的にコンテキストとして読み込まれます。これはClaude Codeの標準動作で、Routinesでも同様です。だからこそ、プロンプトを1行にして詳細はすべて `CLAUDE.md` に書くという構成が成り立ちます。
 
 ## セットアップ手順（Notion自動要約の例）
 
@@ -121,24 +126,22 @@ git remote add origin https://github.com/yourname/notion-summary-task.git
 git push -u origin main
 ```
 
-### 4. スケジュールタスクを作成する
+### 4. ルーチンを作成する
 
-[claude.ai/code/scheduled](https://claude.ai/code/scheduled) のWeb UIから「新しいスケジュールタスク」を作成します。
+[claude.ai/code/routines](https://claude.ai/code/routines) のWeb UIから「新しいルーチン」を作成します（CLIから作る場合は `/schedule` でも同じ設定を対話的に作成できます）。
 
-![スクリーンショット 2026-03-29 22.07.30.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/32ab3719-6368-4356-a197-5b72051f25e3.png)
+![ルーチン作成画面のスクリーンショット](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/a3d2c676-b6c8-4cbb-9320-eeaf2aa59458.png)
 
-設定内容は以下の通りです。
+設定内容は以下の通りです（画像のトリガーは「毎日9:00」の例。実際の運用では用途に応じて間隔を調整してください）。
 
 | 項目 | 設定値 |
 |------|--------|
-| **プロンプト** | CLAUDE.mdを参照し、Notion DBの要約カラムが空のレコードを検出して本文を読み取り、要約を書き込め。 |
-| **モデル** | Opus 4.6（300字要約程度ならSonnet 4.6でも十分。本文が長いページが多い場合はOpusが安定） |
+| **名前** | notion要約タスク |
+| **指示（プロンプト）** | CLAUDE.mdを参照し、Notion DBの要約カラムが空のレコードを検出して本文を読み取り、要約を書き込め。 |
+| **モデル** | Opus 4.8（300字要約程度ならSonnetでも十分。本文が長いページが多い場合はOpusが安定） |
 | **リポジトリ** | `yourname/notion-summary-task` |
-| **スケジュール** | カスタムcron `0 */6 * * *`（6時間ごと）。UIのプリセットは毎時/毎日/平日/毎週。カスタム間隔はドロップダウンから「カスタムcron」を選択してcron式を入力。最小間隔は1時間。 |
+| **トリガー** | Schedule。プリセットは毎時/毎日/平日/毎週。6時間ごとのようなカスタム間隔にしたい場合はCLIの `/schedule update` でcron式（例: `0 */6 * * *`）を直接指定する。最小間隔は1時間。 |
 | **コネクタ** | Notionを追加（OAuth認可） |
-
-![スクリーンショット 2026-03-29 22.10.15.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/4384587/a1f4b00c-16c6-4f17-baf3-8d0dd81a7062.png)
-
 
 プロンプトが1行で済むのは、詳細をすべて `CLAUDE.md` に書いているからです。条件を変えたい時は `CLAUDE.md` を更新してpushするだけで、次回実行から反映されます。
 
@@ -170,7 +173,7 @@ git push -u origin main
 
 ## まとめ
 
-本質は **「Cloud Scheduled Tasksを、自然言語で定義するノーコード自動化基盤として使える」** ということです。
+本質は **「Routines（旧Cloud Scheduled Tasks）を、自然言語で定義するノーコード自動化基盤として使える」** ということです。
 
 - **コードを書かない**: ロジックも条件分岐も自然言語（CLAUDE.md）で定義
 - **自分でメンテするコードがない**: 外部APIの仕様変更はConnectors側のアップデートで対応されることが多い
@@ -180,8 +183,9 @@ git push -u origin main
 
 ## 参考文献
 
-- [Schedule tasks on the web - Claude Code Docs](https://code.claude.com/docs/en/web-scheduled-tasks)
-- [Run prompts on a schedule - Claude Code Docs](https://code.claude.com/docs/en/scheduled-tasks)
+- [Automate work with routines - Claude Code Docs](https://code.claude.com/docs/en/routines)
+- [Run prompts on a schedule (/loop) - Claude Code Docs](https://code.claude.com/docs/en/scheduled-tasks)
+- [Introducing routines in Claude Code - Claude Blog](https://claude.com/blog/introducing-routines-in-claude-code)
 - [Manage costs effectively - Claude Code Docs](https://code.claude.com/docs/en/costs)
 - [claude.ai Connectors（Pre-built web connectors）](https://support.claude.com/en/articles/11176164-pre-built-web-connectors-using-remote-mcp)
 - [Notion AI](https://www.notion.com/ja/product/ai)
