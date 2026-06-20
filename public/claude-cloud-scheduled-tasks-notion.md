@@ -7,7 +7,7 @@ tags:
   - Claude
   - Routines
 private: false
-updated_at: '2026-06-20T00:00:00+09:00'
+updated_at: '2026-06-20T21:36:16+09:00'
 id: cdc48d29ed5345a2377d
 organization_url_name: null
 slide: false
